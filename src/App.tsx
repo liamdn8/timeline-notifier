@@ -132,6 +132,7 @@ export default function App() {
             setWorkspaceView('builder');
           }}
           onCreateScenario={() => {
+            setSelectedScenarioId(null);
             setEditorRequest({ mode: 'new', scenarioId: null, nonce: Date.now() });
             setWorkspaceView('builder');
           }}

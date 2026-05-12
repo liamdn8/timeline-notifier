@@ -59,6 +59,7 @@ export function BuilderView({
   const [saveState, setSaveState] = useState<string>('');
   const handledEditorRequestNonceRef = useRef<number | null>(null);
   const assetsById = useMemo(() => new Map(audioAssets.map((asset) => [asset.id, asset])), [audioAssets]);
+  const hasPersistedDraft = scenarios.some((scenario) => scenario.id === draft.id);
 
   useEffect(() => {
     if (!editorRequest) {
@@ -93,6 +94,10 @@ export function BuilderView({
   }, [editorRequest, onSelectScenario, scenarios]);
 
   useEffect(() => {
+    if (editorRequest?.mode === 'new' && handledEditorRequestNonceRef.current === editorRequest.nonce && !hasPersistedDraft) {
+      return;
+    }
+
     const selectedScenario = scenarios.find((scenario) => scenario.id === selectedScenarioId);
     if (selectedScenario) {
       setDraft(selectedScenario);
@@ -110,7 +115,7 @@ export function BuilderView({
     }
 
     setDraft(scenarios[0]);
-  }, [scenarios, selectedScenarioId]);
+  }, [editorRequest, hasPersistedDraft, scenarios, selectedScenarioId]);
 
   const saveDraft = async () => {
     const normalized = normalizeScenario({

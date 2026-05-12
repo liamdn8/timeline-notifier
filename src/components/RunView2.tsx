@@ -31,6 +31,8 @@ export function RunView2({
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
   const [browserTab, setBrowserTab] = useState<'scenarios' | 'audio'>('scenarios');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'date'>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [nowMillis, setNowMillis] = useState(() => Date.now());
   const playedEventIdsRef = useRef<Set<string>>(new Set());
   const eventRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -51,23 +53,33 @@ export function RunView2({
   const targetEventId = currentEvent?.id ?? nextEvent?.id ?? timeline[0]?.id ?? null;
   const filteredScenarios = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
-    if (!normalizedQuery) {
-      return scenarios;
-    }
+    const nextScenarios = normalizedQuery
+      ? scenarios.filter((candidate) => {
+          const searchSurface = [
+            candidate.title,
+            candidate.description,
+            candidate.timezone,
+            ...candidate.events.map((event) => `${event.title} ${event.description}`),
+          ]
+            .join(' ')
+            .toLowerCase();
 
-    return scenarios.filter((candidate) => {
-      const searchSurface = [
-        candidate.title,
-        candidate.description,
-        candidate.timezone,
-        ...candidate.events.map((event) => `${event.title} ${event.description}`),
-      ]
-        .join(' ')
-        .toLowerCase();
+          return searchSurface.includes(normalizedQuery);
+        })
+      : [...scenarios];
 
-      return searchSurface.includes(normalizedQuery);
+    nextScenarios.sort((left, right) => {
+      const direction = sortDirection === 'asc' ? 1 : -1;
+
+      if (sortBy === 'date') {
+        return left.updatedAt.localeCompare(right.updatedAt) * direction;
+      }
+
+      return left.title.localeCompare(right.title, undefined, { sensitivity: 'base' }) * direction;
     });
-  }, [scenarios, searchQuery]);
+
+    return nextScenarios;
+  }, [scenarios, sortBy, sortDirection, searchQuery]);
 
   useEffect(() => {
     playedEventIdsRef.current = new Set();
@@ -187,6 +199,40 @@ export function RunView2({
                     onChange={(inputEvent) => setSearchQuery(inputEvent.target.value)}
                   />
                 </label>
+
+                <div className="run-sort-controls">
+                  <label className="field run-sort-field">
+                    <span>Sort by</span>
+                    <select
+                      value={sortBy}
+                      onChange={(inputEvent) => setSortBy(inputEvent.target.value as 'name' | 'date')}
+                    >
+                      <option value="name">Name</option>
+                      <option value="date">Date updated</option>
+                    </select>
+                  </label>
+
+                  <div className="field field--static run-sort-direction-field">
+                    <span>Order</span>
+                    <button
+                      type="button"
+                      className="ghost-button run-sort-direction-button"
+                      aria-label={sortDirection === 'asc' ? 'Sort ascending' : 'Sort descending'}
+                      title={sortDirection === 'asc' ? 'Sort ascending' : 'Sort descending'}
+                      onClick={() => setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))}
+                    >
+                      {sortDirection === 'asc' ? (
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M12 5 6.5 10.5h3.5V19h4v-8.5H17.5L12 5Z" fill="currentColor" />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M12 19 17.5 13.5H14V5h-4v8.5H6.5L12 19Z" fill="currentColor" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
 
                 <div className="run-browser-actions">
                   <button type="button" className="primary-button" onClick={onCreateScenario}>
