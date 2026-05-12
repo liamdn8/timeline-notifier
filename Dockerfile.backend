@@ -1,0 +1,14 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY server/package.json ./package.json
+COPY server/package-lock.json ./package-lock.json
+RUN npm ci --omit=dev
+
+COPY server/src ./src
+
+ENV PORT=3001
+EXPOSE 3001
+
+CMD ["npm", "start"]

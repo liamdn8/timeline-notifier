@@ -1,0 +1,368 @@
+import { DateTime } from 'luxon';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { playAudioSource, primeAudioPlayback } from '../lib/audio';
+import { AudioLibraryView } from './AudioLibraryView';
+import { formatClock, formatEventTime, getTimelineEvents } from '../lib/time';
+import type { AudioAsset, Scenario } from '../types';
+
+interface RunView2Props {
+  scenarios: Scenario[];
+  selectedScenarioId: string | null;
+  audioAssets: AudioAsset[];
+  onLiveRunStateChange: (isLiveRunning: boolean) => void;
+  onSelectScenario: (scenarioId: string) => void;
+  onOpenScenarioSettings: (scenarioId: string) => void;
+  onCreateScenario: () => void;
+  onDeleteScenario: (scenarioId: string) => Promise<void>;
+  onUploadAudio: (file: File) => Promise<void>;
+}
+
+export function RunView2({
+  scenarios,
+  selectedScenarioId,
+  audioAssets,
+  onLiveRunStateChange,
+  onSelectScenario,
+  onOpenScenarioSettings,
+  onCreateScenario,
+  onDeleteScenario,
+  onUploadAudio,
+}: RunView2Props) {
+  const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
+  const [browserTab, setBrowserTab] = useState<'scenarios' | 'audio'>('scenarios');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [nowMillis, setNowMillis] = useState(() => Date.now());
+  const playedEventIdsRef = useRef<Set<string>>(new Set());
+  const eventRefs = useRef<Record<string, HTMLElement | null>>({});
+  const assetsById = useMemo(() => new Map(audioAssets.map((asset) => [asset.id, asset])), [audioAssets]);
+  const scenario = useMemo(
+    () => scenarios.find((candidate) => candidate.id === activeScenarioId) ?? null,
+    [activeScenarioId, scenarios],
+  );
+  const timeline = useMemo(() => (scenario ? getTimelineEvents(scenario) : []), [scenario]);
+  const currentEvent = useMemo(
+    () => [...timeline].reverse().find((event) => event.atMillis <= nowMillis) ?? null,
+    [nowMillis, timeline],
+  );
+  const nextEvent = useMemo(
+    () => timeline.find((event) => event.atMillis > nowMillis) ?? null,
+    [nowMillis, timeline],
+  );
+  const targetEventId = currentEvent?.id ?? nextEvent?.id ?? timeline[0]?.id ?? null;
+  const filteredScenarios = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return scenarios;
+    }
+
+    return scenarios.filter((candidate) => {
+      const searchSurface = [
+        candidate.title,
+        candidate.description,
+        candidate.timezone,
+        ...candidate.events.map((event) => `${event.title} ${event.description}`),
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return searchSurface.includes(normalizedQuery);
+    });
+  }, [scenarios, searchQuery]);
+
+  useEffect(() => {
+    playedEventIdsRef.current = new Set();
+  }, [activeScenarioId]);
+
+  useEffect(() => {
+    onLiveRunStateChange(activeScenarioId !== null);
+  }, [activeScenarioId, onLiveRunStateChange]);
+
+  useEffect(() => {
+    if (!selectedScenarioId || scenarios.length === 0) {
+      return;
+    }
+
+    const exists = scenarios.some((candidate) => candidate.id === selectedScenarioId);
+    if (!exists) {
+      onSelectScenario(scenarios[0].id);
+    }
+  }, [onSelectScenario, scenarios, selectedScenarioId]);
+
+  useEffect(() => {
+    if (!scenario) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setNowMillis(Date.now());
+    }, 250);
+    return () => window.clearInterval(intervalId);
+  }, [scenario]);
+
+  useEffect(() => {
+    if (!scenario) {
+      return;
+    }
+
+    const dueEvents = timeline.filter(
+      (event) => event.atMillis <= nowMillis && !playedEventIdsRef.current.has(event.id),
+    );
+
+    dueEvents.forEach((event) => {
+      playedEventIdsRef.current.add(event.id);
+      void playAudioSource(event.audio, assetsById);
+    });
+  }, [assetsById, nowMillis, scenario, timeline]);
+
+  useEffect(() => {
+    if (!targetEventId) {
+      return;
+    }
+
+    const targetElement = eventRefs.current[targetEventId];
+    if (!targetElement) {
+      return;
+    }
+
+    targetElement.scrollIntoView({
+      block: 'center',
+      behavior: 'smooth',
+    });
+  }, [targetEventId]);
+
+  const launchScenario = async (scenarioId: string) => {
+    onSelectScenario(scenarioId);
+    await primeAudioPlayback();
+    setNowMillis(Date.now());
+    playedEventIdsRef.current = new Set();
+    setActiveScenarioId(scenarioId);
+  };
+
+  if (!activeScenarioId) {
+    return (
+      <section className="run-browser-layout">
+        <section className="glass-panel run-browser-panel">
+          <div className="run-browser-tabs" role="tablist" aria-label="Run tools tabs">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={browserTab === 'scenarios'}
+              className={browserTab === 'scenarios' ? 'run-browser-tabs__button is-active' : 'run-browser-tabs__button'}
+              onClick={() => setBrowserTab('scenarios')}
+            >
+              Run browser
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={browserTab === 'audio'}
+              className={browserTab === 'audio' ? 'run-browser-tabs__button is-active' : 'run-browser-tabs__button'}
+              onClick={() => setBrowserTab('audio')}
+            >
+              Audio library
+            </button>
+          </div>
+
+          {browserTab === 'audio' ? (
+            <AudioLibraryView audioAssets={audioAssets} onUploadAudio={onUploadAudio} />
+          ) : (
+            <>
+              <div className="section-header run-browser-header">
+                <div>
+                  <p className="eyebrow">Run browser</p>
+                  <h2>Select a scenario to launch immediately</h2>
+                </div>
+                <div className="run-browser-meta">
+                  <span>{scenarios.length} scenarios available</span>
+                </div>
+              </div>
+
+              <div className="run-browser-toolbar">
+                <label className="field run-search-field">
+                  <span>Search scenarios</span>
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    placeholder="Search by title, description, timezone, or event text"
+                    onChange={(inputEvent) => setSearchQuery(inputEvent.target.value)}
+                  />
+                </label>
+
+                <div className="run-browser-actions">
+                  <button type="button" className="primary-button" onClick={onCreateScenario}>
+                    Create
+                  </button>
+                </div>
+              </div>
+
+              <div className="run-browser-grid">
+                {filteredScenarios.length === 0 ? (
+                  <p className="empty-state">No scenario matches the current search.</p>
+                ) : (
+                  filteredScenarios.map((candidate) => {
+                    const nextTimelineEvent = getTimelineEvents(candidate)[0];
+                    const isSelected = candidate.id === selectedScenarioId;
+
+                    return (
+                      <button
+                        key={candidate.id}
+                        type="button"
+                        className={`run-scenario-card ${isSelected ? 'is-selected' : ''}`}
+                        onClick={() => void launchScenario(candidate.id)}
+                      >
+                        <div className="run-scenario-card__title">
+                          <div>
+                            <p className="eyebrow">{candidate.timezone}</p>
+                            <h3>{candidate.title}</h3>
+                          </div>
+                        </div>
+                        <p className="run-scenario-card__description">{candidate.description || 'No description provided.'}</p>
+                        <div className="run-scenario-card__meta">
+                          <span>{candidate.events.length} events</span>
+                          <span>{nextTimelineEvent ? formatEventTime(nextTimelineEvent.scheduledAtUtc, candidate.timezone) : 'No events'}</span>
+                        </div>
+                        <div className="run-scenario-card__controls">
+                          <button
+                            type="button"
+                            className="ghost-button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              if (!window.confirm(`Delete scenario \"${candidate.title}\"?`)) {
+                                return;
+                              }
+
+                              void onDeleteScenario(candidate.id);
+                            }}
+                          >
+                            Delete
+                          </button>
+                          <button
+                            type="button"
+                            className="ghost-button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onOpenScenarioSettings(candidate.id);
+                            }}
+                          >
+                            Setting
+                          </button>
+                          <button
+                            type="button"
+                            className="primary-button run-scenario-card__action-button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void launchScenario(candidate.id);
+                            }}
+                          >
+                            Launch
+                          </button>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </>
+          )}
+        </section>
+      </section>
+    );
+  }
+
+  if (!scenario) {
+    return (
+      <section className="glass-panel run-panel run-panel--empty">
+        <p className="eyebrow">Run mode</p>
+        <h2>Create and save a scenario first</h2>
+        <p className="empty-state">The runner highlights the active event and triggers audio on time.</p>
+      </section>
+    );
+  }
+
+  const now = DateTime.fromMillis(nowMillis, { zone: scenario.timezone });
+  const boardDate = now.toFormat('cccc, dd/LL/yyyy');
+  const featuredEvent = currentEvent ?? nextEvent;
+
+  return (
+    <section className="run-live-board-layout">
+      <button type="button" className="ghost-button run-live-board__back" onClick={() => setActiveScenarioId(null)}>
+        Back
+      </button>
+
+      <header className="run-live-board__hero">
+        {/* <span className="eyebrow">Run scenario</span> */}
+        <h1>{scenario.title}</h1>
+        {scenario.description ? <p>{scenario.description}</p> : null}
+      </header>
+
+      <section className="glass-panel run-live-board__clock-panel">
+        <span className="eyebrow">Current time</span>
+        <strong>{formatClock(nowMillis, scenario.timezone)}</strong>
+        <p>{boardDate}</p>
+        <small>{scenario.timezone}</small>
+
+        <section className="run-live-board__current-panel">
+          <span className="eyebrow">Current event</span>
+          <h3>{featuredEvent?.title ?? 'Waiting for the first event'}</h3>
+          <p>
+            {featuredEvent?.description || scenario.description || 'The scenario is armed and waiting for the next scheduled cue.'}
+          </p>
+        </section>
+
+        {/* <div className="run-live-board__timeline-footer">
+          <span>
+            {currentEvent
+              ? `Current: ${currentEvent.title}`
+              : nextEvent
+                ? `Waiting for: ${nextEvent.title}`
+                : 'Scenario complete'}
+          </span>
+        </div> */}
+      </section>
+
+      <section className="glass-panel run-live-board__timeline-panel">
+        <div className="run-live-board__timeline-header">
+          <span className="eyebrow">Timeline</span>
+          <strong>{timeline.length} events</strong>
+        </div>
+
+        <div className="run-live-board__timeline-list">
+          {timeline.map((event) => {
+            const isCurrent = currentEvent?.id === event.id;
+
+            return (
+              <article
+                key={event.id}
+                ref={(element) => {
+                  eventRefs.current[event.id] = element;
+                }}
+                className={isCurrent ? 'run-live-board__event is-current' : 'run-live-board__event'}
+              >
+                <div className="run-live-board__event-rail" aria-hidden="true">
+                  <span className="run-live-board__event-dot" />
+                </div>
+                <div className="run-live-board__event-time">
+                  {DateTime.fromISO(event.scheduledAtUtc, { zone: 'utc' }).setZone(scenario.timezone).toFormat('HH:mm')}
+                </div>
+                <div className="run-live-board__event-content">
+                  <h2>{event.title}</h2>
+                  <p>{event.description || 'No description provided.'}</p>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+
+        {/* <div className="run-live-board__timeline-footer">
+          <span>
+            {currentEvent
+              ? `Current: ${currentEvent.title}`
+              : nextEvent
+                ? `Waiting for: ${nextEvent.title}`
+                : 'Scenario complete'}
+          </span>
+        </div> */}
+      </section>
+    </section>
+  );
+}

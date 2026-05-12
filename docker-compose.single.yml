@@ -1,0 +1,27 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    environment:
+      PORT: 3001
+      MONGODB_URI: mongodb://mongo:27017/timeline_notifier
+      MEDIA_DIR: /app/media
+      STATIC_DIR: /app/public
+    volumes:
+      - media-data:/app/media
+    ports:
+      - "8080:3001"
+
+volumes:
+  mongo-data:
+  media-data:
