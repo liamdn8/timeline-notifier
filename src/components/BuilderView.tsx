@@ -57,7 +57,11 @@ export function BuilderView({
 }: BuilderViewProps) {
   const [draft, setDraft] = useState<Scenario>(() => createEmptyScenario());
   const [saveState, setSaveState] = useState<string>('');
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
+  const [isDeletingScenario, setIsDeletingScenario] = useState(false);
   const handledEditorRequestNonceRef = useRef<number | null>(null);
+  const deleteInputRef = useRef<HTMLInputElement | null>(null);
   const assetsById = useMemo(() => new Map(audioAssets.map((asset) => [asset.id, asset])), [audioAssets]);
   const hasPersistedDraft = scenarios.some((scenario) => scenario.id === draft.id);
 
@@ -117,6 +121,14 @@ export function BuilderView({
     setDraft(scenarios[0]);
   }, [editorRequest, hasPersistedDraft, scenarios, selectedScenarioId]);
 
+  useEffect(() => {
+    if (!isDeleteDialogOpen) {
+      return;
+    }
+
+    deleteInputRef.current?.focus();
+  }, [isDeleteDialogOpen]);
+
   const saveDraft = async () => {
     const normalized = normalizeScenario({
       ...draft,
@@ -135,6 +147,31 @@ export function BuilderView({
     setSaveState(`Saved ${new Date().toLocaleTimeString('vi-VN')}`);
   };
 
+  const closeDeleteDialog = () => {
+    if (isDeletingScenario) {
+      return;
+    }
+
+    setIsDeleteDialogOpen(false);
+    setDeleteConfirmationText('');
+  };
+
+  const confirmDeleteScenario = async () => {
+    if (deleteConfirmationText.trim().toLowerCase() !== 'delete') {
+      return;
+    }
+
+    setIsDeletingScenario(true);
+
+    try {
+      await onDeleteScenario(draft.id);
+      setIsDeleteDialogOpen(false);
+      setDeleteConfirmationText('');
+    } finally {
+      setIsDeletingScenario(false);
+    }
+  };
+
   return (
     <section className="builder-layout builder-layout--single">
       <section className="glass-panel editor-panel">
@@ -148,7 +185,7 @@ export function BuilderView({
               <button
                 type="button"
                 className="ghost-button"
-                onClick={() => void onDeleteScenario(draft.id)}
+                onClick={() => setIsDeleteDialogOpen(true)}
               >
                 Delete
               </button>
@@ -255,6 +292,57 @@ export function BuilderView({
 
         {saveState ? <p className="support-line">{saveState}</p> : null}
       </section>
+
+      {isDeleteDialogOpen ? (
+        <div
+          className="run-delete-dialog__overlay"
+          role="presentation"
+          onClick={() => {
+            closeDeleteDialog();
+          }}
+        >
+          <section
+            className="glass-panel run-delete-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="builder-delete-dialog-title"
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          >
+            <p className="eyebrow">Delete scenario</p>
+            <h3 id="builder-delete-dialog-title">Type `delete` to confirm</h3>
+            <p className="run-delete-dialog__body">
+              This will permanently delete <strong>{draft.title || 'this scenario'}</strong>.
+            </p>
+            <label className="field run-delete-dialog__field">
+              <span>Confirmation keyword</span>
+              <input
+                ref={deleteInputRef}
+                type="text"
+                value={deleteConfirmationText}
+                placeholder="Type delete"
+                onChange={(inputEvent) => setDeleteConfirmationText(inputEvent.target.value)}
+              />
+            </label>
+            <div className="run-delete-dialog__actions">
+              <button type="button" className="ghost-button" onClick={closeDeleteDialog} disabled={isDeletingScenario}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => {
+                  void confirmDeleteScenario();
+                }}
+                disabled={isDeletingScenario || deleteConfirmationText.trim().toLowerCase() !== 'delete'}
+              >
+                {isDeletingScenario ? 'Deleting...' : 'Delete scenario'}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

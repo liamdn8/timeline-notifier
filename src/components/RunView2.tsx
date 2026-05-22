@@ -33,9 +33,13 @@ export function RunView2({
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'date'>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [pendingDeleteScenario, setPendingDeleteScenario] = useState<{ id: string; title: string } | null>(null);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
+  const [isDeletingScenario, setIsDeletingScenario] = useState(false);
   const [nowMillis, setNowMillis] = useState(() => Date.now());
   const playedEventIdsRef = useRef<Set<string>>(new Set());
   const eventRefs = useRef<Record<string, HTMLElement | null>>({});
+  const deleteInputRef = useRef<HTMLInputElement | null>(null);
   const assetsById = useMemo(() => new Map(audioAssets.map((asset) => [asset.id, asset])), [audioAssets]);
   const scenario = useMemo(
     () => scenarios.find((candidate) => candidate.id === activeScenarioId) ?? null,
@@ -142,12 +146,50 @@ export function RunView2({
     });
   }, [targetEventId]);
 
+  useEffect(() => {
+    if (!pendingDeleteScenario) {
+      return;
+    }
+
+    deleteInputRef.current?.focus();
+  }, [pendingDeleteScenario]);
+
   const launchScenario = async (scenarioId: string) => {
     onSelectScenario(scenarioId);
     await primeAudioPlayback();
     setNowMillis(Date.now());
     playedEventIdsRef.current = new Set();
     setActiveScenarioId(scenarioId);
+  };
+
+  const closeDeleteDialog = () => {
+    if (isDeletingScenario) {
+      return;
+    }
+
+    setPendingDeleteScenario(null);
+    setDeleteConfirmationText('');
+  };
+
+  const requestDeleteScenario = (scenarioId: string, title: string) => {
+    setPendingDeleteScenario({ id: scenarioId, title });
+    setDeleteConfirmationText('');
+  };
+
+  const confirmDeleteScenario = async () => {
+    if (!pendingDeleteScenario || deleteConfirmationText.trim().toLowerCase() !== 'delete') {
+      return;
+    }
+
+    setIsDeletingScenario(true);
+
+    try {
+      await onDeleteScenario(pendingDeleteScenario.id);
+      setPendingDeleteScenario(null);
+      setDeleteConfirmationText('');
+    } finally {
+      setIsDeletingScenario(false);
+    }
   };
 
   if (!activeScenarioId) {
@@ -273,11 +315,7 @@ export function RunView2({
                             className="ghost-button"
                             onClick={(event) => {
                               event.stopPropagation();
-                              if (!window.confirm(`Delete scenario \"${candidate.title}\"?`)) {
-                                return;
-                              }
-
-                              void onDeleteScenario(candidate.id);
+                              requestDeleteScenario(candidate.id, candidate.title);
                             }}
                           >
                             Delete
@@ -311,6 +349,57 @@ export function RunView2({
             </>
           )}
         </section>
+
+        {pendingDeleteScenario ? (
+          <div
+            className="run-delete-dialog__overlay"
+            role="presentation"
+            onClick={() => {
+              closeDeleteDialog();
+            }}
+          >
+            <section
+              className="glass-panel run-delete-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="run-delete-dialog-title"
+              onClick={(event) => {
+                event.stopPropagation();
+              }}
+            >
+              <p className="eyebrow">Delete scenario</p>
+              <h3 id="run-delete-dialog-title">Type `delete` to confirm</h3>
+              <p className="run-delete-dialog__body">
+                This will permanently delete <strong>{pendingDeleteScenario.title}</strong>.
+              </p>
+              <label className="field run-delete-dialog__field">
+                <span>Confirmation keyword</span>
+                <input
+                  ref={deleteInputRef}
+                  type="text"
+                  value={deleteConfirmationText}
+                  placeholder="Type delete"
+                  onChange={(inputEvent) => setDeleteConfirmationText(inputEvent.target.value)}
+                />
+              </label>
+              <div className="run-delete-dialog__actions">
+                <button type="button" className="ghost-button" onClick={closeDeleteDialog} disabled={isDeletingScenario}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => {
+                    void confirmDeleteScenario();
+                  }}
+                  disabled={isDeletingScenario || deleteConfirmationText.trim().toLowerCase() !== 'delete'}
+                >
+                  {isDeletingScenario ? 'Deleting...' : 'Delete scenario'}
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
       </section>
     );
   }
