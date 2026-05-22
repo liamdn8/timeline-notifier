@@ -460,12 +460,14 @@ button {
   line-height: 1.02;
   letter-spacing: -0.045em;
   text-transform: uppercase;
+  color: #ffca38;
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
 }
 
 .run-live-board__hero p {
   margin: 0;
   max-width: 82ch;
-  color: rgba(246, 241, 232, 0.74);
+  color: rgba(255, 255, 255, 0.94);
   font-size: clamp(1.2rem, 2.0vw, 2.0rem);
 }
 
@@ -483,12 +485,17 @@ button {
   align-content: start;
   min-height: 0;
   overflow: hidden;
+  background: rgba(20, 22, 26, 0.92);
+  border-color: rgba(255, 202, 56, 0.2);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
 }
 
 .run-live-board__clock-panel strong {
   font-size: clamp(4.3rem, 8vw, 6.8rem);
   line-height: 0.9;
   letter-spacing: -0.06em;
+  color: #ffca38;
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
 }
 
 .run-live-board__clock-panel p,
@@ -498,6 +505,16 @@ button {
 .run-live-board__event p {
   margin: 0;
   color: rgba(246, 241, 232, 0.7);
+}
+
+.run-live-board__clock-panel > .eyebrow,
+.run-live-board__current-panel > .eyebrow {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.run-live-board__clock-panel p,
+.run-live-board__clock-panel small {
+  color: rgba(255, 255, 255, 0.96);
 }
 
 .run-live-board__current-panel {
