@@ -16,6 +16,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState<string>('');
   const [isLiveRunActive, setIsLiveRunActive] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(() => Boolean(document.fullscreenElement));
 
   const refreshData = useCallback(async () => {
     const [nextScenarios, nextAudioAssets] = await Promise.all([listScenarios(), listAudioAssets()]);
@@ -52,6 +53,33 @@ export default function App() {
     return () => window.clearInterval(intervalId);
   }, [apiError, isLiveRunActive, refreshData, workspaceView]);
 
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const handleToggleFullscreen = useCallback(async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+
+      await document.documentElement.requestFullscreen();
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : 'Unable to change fullscreen mode.');
+    }
+  }, []);
+
+  const supportsFullscreen = typeof document.documentElement.requestFullscreen === 'function';
+
   const handleSaveScenario = async (scenario: Scenario) => {
     try {
       await saveScenario(scenario);
@@ -87,6 +115,12 @@ export default function App() {
         <div className="brand-lockup">
           <p className="eyebrow">Timeline Voice Notifier</p>
         </div>
+
+        {supportsFullscreen ? (
+          <button type="button" className="ghost-button fullscreen-toggle" onClick={handleToggleFullscreen}>
+            {isFullscreen ? 'Exit full screen' : 'Open full screen'}
+          </button>
+        ) : null}
       </div>
 
       {apiError ? (

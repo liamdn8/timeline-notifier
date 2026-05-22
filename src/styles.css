@@ -72,6 +72,10 @@ button {
   margin-bottom: var(--space-5);
 }
 
+.fullscreen-toggle {
+  justify-self: end;
+}
+
 .hero-shell {
   grid-template-columns: 1.6fr 0.9fr;
   align-items: start;
@@ -189,6 +193,20 @@ button {
   background: rgba(255, 255, 255, 0.05);
   color: #f6f1e8;
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+:fullscreen .app-shell {
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  padding-inline: clamp(1rem, 2.5vw, 2.5rem);
+}
+
+:-webkit-full-screen .app-shell {
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  padding-inline: clamp(1rem, 2.5vw, 2.5rem);
 }
 
 .primary-button:hover,
