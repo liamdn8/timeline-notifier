@@ -67,6 +67,7 @@ const audioAssetSchema = new mongoose.Schema(
     mimeType: { type: String, required: true },
     fileName: { type: String, required: true, unique: true },
     s3Key: { type: String },
+    durationSeconds: { type: Number },
     createdAt: { type: String, required: true },
   },
   { versionKey: false },
@@ -94,6 +95,7 @@ const s3Client = s3Configured ? new S3Client({}) : null;
 const mediaSyncByFileName = new Map();
 
 const buildAudioAssetS3Key = (fileName) => (s3Prefix ? `${s3Prefix}/${fileName}` : fileName);
+const resolveAudioAssetS3Key = (asset) => asset?.s3Key ?? buildAudioAssetS3Key(asset.fileName);
 
 const getLocalMediaPath = (fileName) => path.join(mediaDir, path.basename(fileName));
 
@@ -101,6 +103,19 @@ const createNotFoundError = (message) => {
   const error = new Error(message);
   error.code = 'ENOENT';
   return error;
+};
+
+const parseDurationSeconds = (value) => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return undefined;
+  }
+
+  return parsed;
 };
 
 const isNotFoundError = (error) =>
@@ -116,7 +131,7 @@ const uploadAudioToS3 = async (asset, localFilePath) => {
   await s3Client.send(
     new PutObjectCommand({
       Bucket: s3Bucket,
-      Key: asset.s3Key ?? buildAudioAssetS3Key(asset.fileName),
+      Key: resolveAudioAssetS3Key(asset),
       Body: await readFile(localFilePath),
       ContentType: asset.mimeType,
     }),
@@ -124,16 +139,26 @@ const uploadAudioToS3 = async (asset, localFilePath) => {
 };
 
 const deleteAudioFromS3 = async (asset) => {
-  if (!s3Client || !s3Bucket || !asset?.s3Key) {
+  if (!s3Client || !s3Bucket || !asset?.fileName) {
     return;
   }
 
   await s3Client.send(
     new DeleteObjectCommand({
       Bucket: s3Bucket,
-      Key: asset.s3Key,
+      Key: resolveAudioAssetS3Key(asset),
     }),
   );
+};
+
+const deleteLocalAudioFile = async (fileName) => {
+  try {
+    await unlink(getLocalMediaPath(fileName));
+  } catch (error) {
+    if (error?.code !== 'ENOENT') {
+      throw error;
+    }
+  }
 };
 
 const hydrateLocalAudioFromS3 = async (asset) => {
@@ -145,7 +170,7 @@ const hydrateLocalAudioFromS3 = async (asset) => {
   const response = await s3Client.send(
     new GetObjectCommand({
       Bucket: s3Bucket,
-      Key: asset.s3Key ?? buildAudioAssetS3Key(asset.fileName),
+      Key: resolveAudioAssetS3Key(asset),
     }),
   );
 
@@ -203,6 +228,7 @@ const toAudioAssetPayload = (assetDoc) => ({
   id: assetDoc.id,
   name: assetDoc.name,
   mimeType: assetDoc.mimeType,
+  durationSeconds: assetDoc.durationSeconds,
   createdAt: assetDoc.createdAt,
   url: `/media/${assetDoc.fileName}`,
 });
@@ -269,6 +295,7 @@ app.post('/api/audio-assets', upload.single('file'), async (req, res, next) => {
     mimeType: req.file.mimetype || 'audio/mpeg',
     fileName: req.file.filename,
     s3Key: s3Configured ? buildAudioAssetS3Key(req.file.filename) : undefined,
+    durationSeconds: parseDurationSeconds(req.body?.durationSeconds),
     createdAt: new Date().toISOString(),
   };
 
@@ -289,6 +316,62 @@ app.post('/api/audio-assets', upload.single('file'), async (req, res, next) => {
       // Ignore cleanup failures after an upload error.
     }
 
+    next(error);
+  }
+});
+
+app.patch('/api/audio-assets/:id/duration', async (req, res) => {
+  const durationSeconds = parseDurationSeconds(req.body?.durationSeconds);
+
+  if (durationSeconds === undefined) {
+    res.status(400).send('A valid durationSeconds value is required.');
+    return;
+  }
+
+  const updatedAsset = await AudioAssetModel.findOneAndUpdate(
+    { id: req.params.id },
+    { durationSeconds },
+    { new: true },
+  ).lean();
+
+  if (!updatedAsset) {
+    res.status(404).send('Audio asset not found.');
+    return;
+  }
+
+  res.json(toAudioAssetPayload(updatedAsset));
+});
+
+app.delete('/api/audio-assets/:id', async (req, res, next) => {
+  try {
+    const asset = await AudioAssetModel.findOne({ id: req.params.id }).lean();
+
+    if (!asset) {
+      res.status(404).send('Audio asset not found.');
+      return;
+    }
+
+    const scenarioUsingAsset = await ScenarioModel.findOne({
+      events: {
+        $elemMatch: {
+          'audio.type': 'uploaded',
+          'audio.assetId': asset.id,
+        },
+      },
+    }).lean();
+
+    if (scenarioUsingAsset) {
+      res.status(409).send(`Audio asset is still used by scenario "${scenarioUsingAsset.title}".`);
+      return;
+    }
+
+    await deleteAudioFromS3(asset);
+    await deleteLocalAudioFile(asset.fileName);
+    mediaSyncByFileName.delete(asset.fileName);
+    await AudioAssetModel.findOneAndDelete({ id: asset.id });
+
+    res.json({ ok: true });
+  } catch (error) {
     next(error);
   }
 });

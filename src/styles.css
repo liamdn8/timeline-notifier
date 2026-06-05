@@ -8,6 +8,18 @@
   --space-7: 2.5rem;
   --panel-padding: 1.4rem;
   --panel-radius: 28px;
+  --control-surface: rgba(255, 255, 255, 0.05);
+  --control-surface-hover: rgba(255, 255, 255, 0.08);
+  --control-surface-focus: rgba(255, 255, 255, 0.1);
+  --control-border: rgba(255, 255, 255, 0.08);
+  --control-border-strong: rgba(255, 255, 255, 0.14);
+  --control-border-focus: rgba(245, 177, 76, 0.48);
+  --control-text: #f6f1e8;
+  --control-text-muted: rgba(246, 241, 232, 0.62);
+  --control-option-bg: #f4efe6;
+  --control-option-text: #172232;
+  --control-option-selected-bg: #93baf4;
+  --control-option-selected-text: #081017;
   --live-current-title-size: clamp(2.5rem, 4.0vw, 4.0rem);
   --live-next-title-size: clamp(2.1rem, 3.0vw, 3.2rem);
   --live-current-title-size-mobile: clamp(2.3rem, 3vw, 4rem);
@@ -165,8 +177,12 @@ button {
 }
 
 .mode-switcher__button.is-active {
-  background: linear-gradient(135deg, #f5b14c, #ea6128);
-  color: #19130c;
+  background: linear-gradient(135deg, #f7cf7f, #ea6128 92%);
+  color: #140d06;
+  font-weight: 700;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 10px 22px rgba(234, 97, 40, 0.24);
 }
 
 .primary-button,
@@ -249,6 +265,150 @@ button {
 
 .builder-events-header {
   margin-top: var(--space-5);
+}
+
+.builder-event-navigator {
+  position: fixed;
+  top: clamp(7.5rem, 16vh, 10rem);
+  right: clamp(0.75rem, 2vw, 2rem);
+  z-index: 20;
+  max-height: calc(100vh - clamp(9rem, 18vh, 12rem));
+}
+
+.builder-event-navigator__list {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+  max-height: inherit;
+  overflow: visible;
+  padding: 0.25rem;
+  scrollbar-width: thin;
+}
+
+.builder-event-navigator__item {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+}
+
+.builder-event-navigator__dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(152, 221, 214, 0.4);
+  border: 1px solid rgba(152, 221, 214, 0.2);
+  box-shadow: 0 0 0 0 rgba(245, 177, 76, 0);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(246, 241, 232, 0.88);
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease;
+}
+
+.builder-event-navigator__item:hover .builder-event-navigator__dot,
+.builder-event-navigator__item:focus-visible .builder-event-navigator__dot {
+  transform: scale(1.1);
+  background: rgba(219, 248, 241, 0.85);
+}
+
+.builder-event-navigator__item.is-active .builder-event-navigator__dot {
+  background: #f5b14c;
+  border-color: rgba(245, 177, 76, 0.7);
+  box-shadow: 0 0 0 6px rgba(245, 177, 76, 0.16);
+  color: #19130c;
+}
+
+.builder-event-navigator__item.is-incomplete .builder-event-navigator__dot {
+  background: rgba(247, 194, 115, 0.44);
+  border-color: rgba(247, 194, 115, 0.34);
+}
+
+.builder-event-navigator__dot--add {
+  background: rgba(52, 113, 105, 0.48);
+  border-color: rgba(152, 221, 214, 0.34);
+  color: #dbf8f1;
+}
+
+.builder-event-navigator__dot--add svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.builder-event-navigator__dot--status {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: rgba(246, 241, 232, 0.74);
+}
+
+.builder-event-navigator__dot--status svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.builder-event-navigator__item--status.is-warning .builder-event-navigator__dot--status {
+  background: rgba(247, 194, 115, 0.92);
+  border-color: rgba(247, 194, 115, 0.68);
+  color: #19130c;
+  box-shadow: 0 0 0 6px rgba(247, 194, 115, 0.18);
+}
+
+.builder-event-navigator__item--status.is-ok .builder-event-navigator__dot--status {
+  background: rgba(52, 113, 105, 0.36);
+  border-color: rgba(152, 221, 214, 0.26);
+  color: #dbf8f1;
+}
+
+.builder-event-navigator__item--add:hover .builder-event-navigator__dot--add,
+.builder-event-navigator__item--add:focus-visible .builder-event-navigator__dot--add {
+  background: rgba(82, 165, 153, 0.88);
+  border-color: rgba(152, 221, 214, 0.58);
+  color: #081017;
+}
+
+.builder-event-navigator__tooltip {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 0.85rem);
+  transform: translateY(-50%) translateX(0.4rem);
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  padding: 0.5rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(9, 15, 24, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+  color: #f6f1e8;
+  font-size: 0.9rem;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.builder-event-navigator:hover .builder-event-navigator__tooltip,
+.builder-event-navigator:focus-within .builder-event-navigator__tooltip,
+.builder-event-navigator__item:hover .builder-event-navigator__tooltip,
+.builder-event-navigator__item:focus-visible .builder-event-navigator__tooltip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
 }
 
 .audio-library-layout {
@@ -738,8 +898,12 @@ button {
 }
 
 .run-browser-tabs__button.is-active {
-  background: linear-gradient(135deg, #f5b14c, #ea6128);
-  color: #19130c;
+  background: linear-gradient(135deg, #f7cf7f, #ea6128 92%);
+  color: #140d06;
+  font-weight: 700;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 10px 22px rgba(234, 97, 40, 0.24);
 }
 
 .run-browser-actions {
@@ -895,6 +1059,21 @@ button {
 
 .run-scenario-card.is-selected {
   border-color: rgba(245, 177, 76, 0.64);
+  background:
+    linear-gradient(135deg, rgba(245, 177, 76, 0.22), rgba(234, 97, 40, 0.16) 55%, rgba(10, 15, 24, 0.22)),
+    rgba(255, 255, 255, 0.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 34px rgba(0, 0, 0, 0.16);
+}
+
+.run-scenario-card.is-selected .run-scenario-card__title h3 {
+  color: #fff2d2;
+}
+
+.run-scenario-card.is-selected .run-scenario-card__description,
+.run-scenario-card.is-selected .run-scenario-card__meta {
+  color: rgba(255, 236, 198, 0.84);
 }
 
 .run-scenario-card__title,
@@ -1272,13 +1451,91 @@ button {
   width: 100%;
   padding: 0.92rem 1rem;
   border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.05);
-  color: inherit;
+  border: 1px solid var(--control-border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 58%),
+    var(--control-surface);
+  color: var(--control-text);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 0 rgba(245, 177, 76, 0);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease;
 }
 
 .field textarea {
   resize: vertical;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--control-text-muted);
+}
+
+.field input:hover,
+.field textarea:hover,
+.field select:hover {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 58%),
+    var(--control-surface-hover);
+  border-color: var(--control-border-strong);
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  outline: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 58%),
+    var(--control-surface-focus);
+  border-color: var(--control-border-focus);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 4px rgba(245, 177, 76, 0.12);
+}
+
+.field select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 2.9rem;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='m5 7.5 5 5 5-5' stroke='%23f6f1e8' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 58%),
+    var(--control-surface);
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-position: right 1rem center, center, center;
+  background-size: 1rem 1rem, auto, auto;
+}
+
+.field select:hover {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='m5 7.5 5 5 5-5' stroke='%23f6f1e8' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 58%),
+    var(--control-surface-hover);
+}
+
+.field select:focus {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='m5 7.5 5 5 5-5' stroke='%23f6f1e8' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 58%),
+    var(--control-surface-focus);
+}
+
+.field select option,
+.field select optgroup {
+  background: var(--control-option-bg);
+  color: var(--control-option-text);
+}
+
+.field select option:checked,
+.field select option:hover,
+.field select option:focus {
+  background: var(--control-option-selected-bg);
+  color: var(--control-option-selected-text);
 }
 
 .scenario-list,
@@ -1322,7 +1579,17 @@ button {
 
 .scenario-list__item.is-active {
   border-color: rgba(245, 177, 76, 0.58);
-  background: linear-gradient(135deg, rgba(234, 97, 40, 0.26), rgba(245, 177, 76, 0.08));
+  background:
+    linear-gradient(135deg, rgba(245, 177, 76, 0.2), rgba(234, 97, 40, 0.14) 55%, rgba(10, 15, 24, 0.2)),
+    rgba(255, 255, 255, 0.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 14px 28px rgba(0, 0, 0, 0.14);
+}
+
+.scenario-list__item.is-active,
+.scenario-list__item.is-active span {
+  color: rgba(255, 236, 198, 0.9);
 }
 
 .audio-list__item,
@@ -1346,6 +1613,10 @@ button {
   margin-top: var(--space-3);
 }
 
+.builder-event-anchor {
+  scroll-margin-top: 10rem;
+}
+
 .event-card--builder {
   display: grid;
   gap: var(--space-3);
@@ -1365,6 +1636,13 @@ button {
 
 .event-cell__label {
   display: block;
+}
+
+.event-cell__meta {
+  display: block;
+  margin-top: 0.55rem;
+  font-size: 0.83rem;
+  color: rgba(246, 241, 232, 0.74);
 }
 
 .event-cell--preview,
@@ -1600,6 +1878,12 @@ button {
 
   .event-card__top-row {
     grid-template-columns: 1fr;
+  }
+
+  .builder-event-navigator {
+    top: 6.5rem;
+    right: 0.5rem;
+    max-height: calc(100vh - 8rem);
   }
 
   .run-wheel__item {

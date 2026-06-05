@@ -35,7 +35,38 @@ export const BUILTIN_AUDIO_OPTIONS: BuiltinAudioDefinition[] = [
   },
 ];
 
+export const getBuiltinAudioDurationSeconds = (key: BuiltinAudioKey) => {
+  const definition = BUILTIN_AUDIO_OPTIONS.find((option) => option.key === key);
+
+  if (!definition) {
+    return null;
+  }
+
+  return definition.sequence.reduce((total, note) => total + note.duration + 0.03, 0);
+};
+
+export const formatAudioDuration = (seconds?: number | null) => {
+  if (seconds === undefined) {
+    return 'Loading duration';
+  }
+
+  if (seconds === null || !Number.isFinite(seconds)) {
+    return 'Duration unavailable';
+  }
+
+  const roundedSeconds = Math.max(1, Math.round(seconds));
+  const minutes = Math.floor(roundedSeconds / 60);
+  const remainder = roundedSeconds % 60;
+
+  if (minutes === 0) {
+    return `${remainder}s`;
+  }
+
+  return `${minutes}:${remainder.toString().padStart(2, '0')}`;
+};
+
 let audioContextPromise: Promise<AudioContext> | null = null;
+let audioMetadataContextPromise: Promise<AudioContext> | null = null;
 let stopActivePlayback = () => {};
 let activePlaybackToken = 0;
 
@@ -78,6 +109,78 @@ const getAudioContext = async () => {
     await context.resume();
   }
   return context;
+};
+
+const getAudioMetadataContext = async () => {
+  if (!audioMetadataContextPromise) {
+    audioMetadataContextPromise = Promise.resolve(new AudioContext());
+  }
+
+  return audioMetadataContextPromise;
+};
+
+const decodeAudioDurationSeconds = async (arrayBuffer: ArrayBuffer) => {
+  const context = await getAudioMetadataContext();
+  const decodedBuffer = await context.decodeAudioData(arrayBuffer.slice(0));
+  return decodedBuffer.duration;
+};
+
+const loadAudioElementDurationSeconds = async (url: string) =>
+  new Promise<number>((resolve, reject) => {
+    const audio = new Audio();
+    audio.preload = 'metadata';
+
+    const cleanup = () => {
+      audio.src = '';
+    };
+
+    audio.addEventListener(
+      'loadedmetadata',
+      () => {
+        const duration = audio.duration;
+        cleanup();
+
+        if (Number.isFinite(duration)) {
+          resolve(duration);
+          return;
+        }
+
+        reject(new Error('Audio duration is not finite.'));
+      },
+      { once: true },
+    );
+
+    audio.addEventListener(
+      'error',
+      () => {
+        cleanup();
+        reject(new Error('Unable to load audio metadata.'));
+      },
+      { once: true },
+    );
+
+    audio.src = url;
+  });
+
+export const loadAudioDurationSeconds = async (asset: Pick<AudioAsset, 'url' | 'blob'>) => {
+  if (asset.blob) {
+    return decodeAudioDurationSeconds(await asset.blob.arrayBuffer());
+  }
+
+  if (!asset.url) {
+    throw new Error('Audio source is missing.');
+  }
+
+  try {
+    return await loadAudioElementDurationSeconds(asset.url);
+  } catch {
+    const response = await fetch(asset.url);
+    if (!response.ok) {
+      throw new Error(`Unable to fetch audio file: ${response.status}`);
+    }
+
+    return decodeAudioDurationSeconds(await response.arrayBuffer());
+  }
 };
 
 const playBuiltin = async (key: BuiltinAudioKey) => {

@@ -1,4 +1,4 @@
-import { BUILTIN_AUDIO_OPTIONS } from '../lib/audio';
+import { BUILTIN_AUDIO_OPTIONS, formatAudioDuration, getBuiltinAudioDurationSeconds } from '../lib/audio';
 import { formatEventTime } from '../lib/time';
 import type { AudioAsset, ScenarioEvent } from '../types';
 
@@ -13,7 +13,9 @@ interface EventEditorProps {
 }
 
 const toAudioValue = (event: ScenarioEvent) =>
-  event.audio.type === 'builtin' ? `builtin:${event.audio.key}` : `uploaded:${event.audio.assetId}`;
+  event.audio.type === 'builtin'
+    ? `builtin:${event.audio.key}`
+    : `uploaded:${'assetId' in event.audio ? event.audio.assetId : ''}`;
 
 export function EventEditor({
   event,
@@ -24,6 +26,17 @@ export function EventEditor({
   onPreview,
   onStopPreview,
 }: EventEditorProps) {
+  // let selectedUploadedAsset: AudioAsset | null = null;
+  // if ('assetId' in event.audio) {
+  //   const uploadedAssetId = event.audio.assetId;
+  //   selectedUploadedAsset = audioAssets.find((asset) => asset.id === uploadedAssetId) ?? null;
+  // }
+
+  // const selectedDuration =
+  //   event.audio.type === 'builtin'
+  //     ? getBuiltinAudioDurationSeconds(event.audio.key)
+  //     : selectedUploadedAsset?.durationSeconds;
+
   return (
     <article className="event-card event-card--builder">
       <div className="event-card__top-row">
@@ -73,12 +86,12 @@ export function EventEditor({
           >
             {BUILTIN_AUDIO_OPTIONS.map((option) => (
               <option key={option.key} value={`builtin:${option.key}`}>
-                Built-in: {option.label}
+                Built-in: {option.label} ({formatAudioDuration(getBuiltinAudioDurationSeconds(option.key))})
               </option>
             ))}
             {audioAssets.map((asset) => (
               <option key={asset.id} value={`uploaded:${asset.id}`}>
-                Uploaded: {asset.name}
+                Uploaded: {asset.name} ({formatAudioDuration(asset.durationSeconds)})
               </option>
             ))}
           </select>

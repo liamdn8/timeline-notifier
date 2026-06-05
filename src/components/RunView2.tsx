@@ -16,6 +16,8 @@ interface RunView2Props {
   onCloneScenario: (scenarioId: string) => void;
   onDeleteScenario: (scenarioId: string) => Promise<void>;
   onUploadAudio: (file: File) => Promise<void>;
+  onDeleteAudio: (audioAssetId: string) => Promise<void>;
+  onUpdateAudioDuration: (audioAssetId: string, durationSeconds: number) => Promise<void>;
 }
 
 export function RunView2({
@@ -29,6 +31,8 @@ export function RunView2({
   onCloneScenario,
   onDeleteScenario,
   onUploadAudio,
+  onDeleteAudio,
+  onUpdateAudioDuration,
 }: RunView2Props) {
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
   const [browserTab, setBrowserTab] = useState<'scenarios' | 'audio'>('scenarios');
@@ -220,7 +224,12 @@ export function RunView2({
           </div>
 
           {browserTab === 'audio' ? (
-            <AudioLibraryView audioAssets={audioAssets} onUploadAudio={onUploadAudio} />
+            <AudioLibraryView
+              audioAssets={audioAssets}
+              onUploadAudio={onUploadAudio}
+              onDeleteAudio={onDeleteAudio}
+              onUpdateAudioDuration={onUpdateAudioDuration}
+            />
           ) : (
             <>
               <div className="section-header run-browser-header">

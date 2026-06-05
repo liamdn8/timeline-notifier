@@ -2,7 +2,15 @@ import { useCallback, useEffect, useState } from 'react';
 import './styles.css';
 import { BuilderView } from './components/BuilderView';
 import { RunView2 } from './components/RunView2';
-import { deleteScenario, listAudioAssets, listScenarios, saveScenario, uploadAudioAsset } from './lib/db';
+import {
+  deleteAudioAsset,
+  deleteScenario,
+  listAudioAssets,
+  listScenarios,
+  saveScenario,
+  updateAudioAssetDuration,
+  uploadAudioAsset,
+} from './lib/db';
 import type { AudioAsset, Scenario } from './types';
 
 type WorkspaceView = 'run' | 'builder';
@@ -114,6 +122,26 @@ export default function App() {
     }
   };
 
+  const handleDeleteAudio = async (audioAssetId: string) => {
+    try {
+      await deleteAudioAsset(audioAssetId);
+      await refreshData();
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : 'Unable to delete audio.');
+    }
+  };
+
+  const handleUpdateAudioDuration = async (audioAssetId: string, durationSeconds: number) => {
+    try {
+      await updateAudioAssetDuration(audioAssetId, durationSeconds);
+      setAudioAssets((currentAssets) =>
+        currentAssets.map((asset) => (asset.id === audioAssetId ? { ...asset, durationSeconds } : asset)),
+      );
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : 'Unable to update audio duration.');
+    }
+  };
+
   return (
     <div className="app-shell">
       <div className="top-bar">
@@ -182,6 +210,8 @@ export default function App() {
           }}
           onDeleteScenario={handleDeleteScenario}
           onUploadAudio={handleUploadAudio}
+          onDeleteAudio={handleDeleteAudio}
+          onUpdateAudioDuration={handleUpdateAudioDuration}
         />
       ) : (
         <section className="builder-workspace">
@@ -194,6 +224,7 @@ export default function App() {
           scenarios={scenarios}
           selectedScenarioId={selectedScenarioId}
           audioAssets={audioAssets}
+          onUpdateAudioDuration={handleUpdateAudioDuration}
           onSelectScenario={setSelectedScenarioId}
           onSaveScenario={handleSaveScenario}
           onDeleteScenario={async (scenarioId) => {

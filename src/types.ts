@@ -35,6 +35,7 @@ export interface AudioAsset {
   mimeType: string;
   url: string;
   blob?: Blob;
+  durationSeconds?: number;
   createdAt: string;
 }
 
