@@ -11,7 +11,6 @@ export MEDIA_DIR="${MEDIA_DIR:-$ROOT_DIR/server/media}"
 # export AUDIO_S3_BUCKET="${AUDIO_S3_BUCKET:-}"
 # export AUDIO_S3_PREFIX="${AUDIO_S3_PREFIX:-}"
 
-export MONGODB_URI=mongodb://ocsadmin:Vht%402026@mongo.liam26.online:27017/timeline_notifier?authSource=admin
 export AUDIO_S3_ENABLED=true
 export AUDIO_S3_BUCKET=kvalidator-2026
 export AUDIO_S3_PREFIX=timeline-notifier/audio
