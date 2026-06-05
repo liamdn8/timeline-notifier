@@ -9,6 +9,7 @@ interface EventEditorProps {
   onChange: (event: ScenarioEvent) => void;
   onRemove: () => void;
   onPreview: (event: ScenarioEvent) => Promise<void>;
+  onStopPreview: () => void;
 }
 
 const toAudioValue = (event: ScenarioEvent) =>
@@ -21,6 +22,7 @@ export function EventEditor({
   onChange,
   onRemove,
   onPreview,
+  onStopPreview,
 }: EventEditorProps) {
   return (
     <article className="event-card event-card--builder">
@@ -84,17 +86,30 @@ export function EventEditor({
 
         <div className="field field--static event-cell event-cell--preview">
           <span className="event-cell__label">Preview</span>
-          <button
-            type="button"
-            className="event-icon-button"
-            aria-label="Preview voice notification"
-            title="Preview voice notification"
-            onClick={() => void onPreview(event)}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M8 6v12l10-6-10-6Z" fill="currentColor" />
-            </svg>
-          </button>
+          <div className="event-cell__actions">
+            <button
+              type="button"
+              className="event-icon-button"
+              aria-label="Preview voice notification"
+              title="Preview voice notification"
+              onClick={() => void onPreview(event)}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8 6v12l10-6-10-6Z" fill="currentColor" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="event-icon-button"
+              aria-label="Stop voice notification preview"
+              title="Stop voice notification preview"
+              onClick={onStopPreview}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 7h10v10H7V7Z" fill="currentColor" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div className="field field--static event-cell event-cell--action">

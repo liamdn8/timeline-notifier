@@ -18,6 +18,7 @@ Timeline-based voice notification app with a React frontend and a server deploym
 - Add event title and optional description
 - Use built-in alert sounds or upload audio files stored on the server
 - Run a saved scenario with current event highlight, next event countdown, support text, and audio playback
+- Optional S3 mirroring for uploaded audio with local disk cache fallback
 
 ## Run locally
 
@@ -37,6 +38,20 @@ npm start
 ```
 
 The backend expects MongoDB at `mongodb://127.0.0.1:27017/timeline_notifier` by default.
+
+Optional backend env for audio storage:
+
+- `AUDIO_S3_ENABLED=true` enables S3 mirroring and cache hydration for uploaded audio
+- `AUDIO_S3_BUCKET=my-audio-bucket` selects the target bucket
+- `AUDIO_S3_PREFIX=timeline-notifier/audio` stores objects under that path prefix inside the bucket
+- AWS credentials and region are loaded by the AWS SDK from the standard environment, for example `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN`
+
+When S3 is enabled:
+
+- uploads still land in `MEDIA_DIR` first
+- the backend uploads the same file to S3
+- audio is still served from `/media/*`
+- if a local file is missing, the backend fetches it from S3, writes it back into `MEDIA_DIR`, and then serves it
 
 ## Build
 
@@ -83,5 +98,6 @@ App URL:
 ## Notes
 
 - Uploaded audio files are served from `/media/*` through the backend.
+- With `AUDIO_S3_ENABLED=true`, `/media/*` uses local disk as a cache and only reaches out to S3 when the file is missing locally.
 - The browser still needs a user gesture before audio playback is fully unlocked.
 - Live notifications still depend on the run screen being open in the browser.

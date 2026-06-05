@@ -14,6 +14,13 @@ services:
       PORT: 3001
       MONGODB_URI: mongodb://mongo:27017/timeline_notifier
       MEDIA_DIR: /app/media
+      AUDIO_S3_ENABLED: ${AUDIO_S3_ENABLED:-false}
+      AUDIO_S3_BUCKET: ${AUDIO_S3_BUCKET:-}
+      AUDIO_S3_PREFIX: ${AUDIO_S3_PREFIX:-}
+      AWS_REGION: ${AWS_REGION:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
     depends_on:
       - mongo
     volumes:

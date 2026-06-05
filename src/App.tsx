@@ -6,13 +6,18 @@ import { deleteScenario, listAudioAssets, listScenarios, saveScenario, uploadAud
 import type { AudioAsset, Scenario } from './types';
 
 type WorkspaceView = 'run' | 'builder';
+type EditorRequest = {
+  mode: 'new' | 'edit' | 'clone';
+  scenarioId: string | null;
+  nonce: number;
+};
 
 export default function App() {
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>('run');
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [audioAssets, setAudioAssets] = useState<AudioAsset[]>([]);
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
-  const [editorRequest, setEditorRequest] = useState<{ mode: 'new' | 'edit'; scenarioId: string | null; nonce: number } | undefined>(undefined);
+  const [editorRequest, setEditorRequest] = useState<EditorRequest | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState<string>('');
   const [isLiveRunActive, setIsLiveRunActive] = useState(false);
@@ -168,6 +173,11 @@ export default function App() {
           onCreateScenario={() => {
             setSelectedScenarioId(null);
             setEditorRequest({ mode: 'new', scenarioId: null, nonce: Date.now() });
+            setWorkspaceView('builder');
+          }}
+          onCloneScenario={(scenarioId) => {
+            setSelectedScenarioId(scenarioId);
+            setEditorRequest({ mode: 'clone', scenarioId, nonce: Date.now() });
             setWorkspaceView('builder');
           }}
           onDeleteScenario={handleDeleteScenario}

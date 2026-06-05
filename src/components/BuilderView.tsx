@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { playAudioSource } from '../lib/audio';
+import { playAudioSource, stopAudioPlayback } from '../lib/audio';
 import { createId } from '../lib/utils';
 import { DEFAULT_TIMEZONE, TIMEZONE_OPTIONS, getDefaultLocalDateTime, normalizeScenario } from '../lib/time';
 import type { AudioAsset, Scenario, ScenarioEvent } from '../types';
@@ -13,7 +13,7 @@ interface BuilderViewProps {
   onSaveScenario: (scenario: Scenario) => Promise<void>;
   onDeleteScenario: (scenarioId: string) => Promise<void>;
   editorRequest?: {
-    mode: 'new' | 'edit';
+    mode: 'new' | 'edit' | 'clone';
     scenarioId: string | null;
     nonce: number;
   };
@@ -41,6 +41,23 @@ const createEmptyScenario = (): Scenario => {
     description: '',
     timezone,
     events: [createEmptyEvent(timezone)],
+    createdAt: now,
+    updatedAt: now,
+  };
+};
+
+const createClonedScenario = (scenario: Scenario): Scenario => {
+  const now = new Date().toISOString();
+  const baseTitle = scenario.title.trim() || 'Untitled scenario';
+
+  return {
+    ...scenario,
+    id: createId('scenario'),
+    title: `${baseTitle} copy`,
+    events: scenario.events.map((event) => ({
+      ...event,
+      id: createId('event'),
+    })),
     createdAt: now,
     updatedAt: now,
   };
@@ -94,6 +111,19 @@ export function BuilderView({
       setSaveState('');
       handledEditorRequestNonceRef.current = editorRequest.nonce;
       return;
+    }
+
+    if (editorRequest?.mode === 'clone' && editorRequest.scenarioId) {
+      const requestedScenario = scenarios.find((scenario) => scenario.id === editorRequest.scenarioId);
+      if (!requestedScenario || handledEditorRequestNonceRef.current === editorRequest.nonce) {
+        return;
+      }
+
+      const clonedScenario = createClonedScenario(requestedScenario);
+      setDraft(clonedScenario);
+      onSelectScenario(clonedScenario.id);
+      setSaveState('');
+      handledEditorRequestNonceRef.current = editorRequest.nonce;
     }
   }, [editorRequest, onSelectScenario, scenarios]);
 
@@ -286,6 +316,7 @@ export function BuilderView({
                 })
               }
               onPreview={(previewEvent) => playAudioSource(previewEvent.audio, assetsById)}
+              onStopPreview={stopAudioPlayback}
             />
           ))}
         </div>

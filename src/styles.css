@@ -1353,7 +1353,7 @@ button {
 
 .event-card__top-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(200px, 1.2fr) minmax(200px, 1fr) 56px 56px;
+  grid-template-columns: minmax(180px, 1fr) minmax(200px, 1.2fr) minmax(200px, 1fr) 112px 56px;
   gap: var(--space-3);
   align-items: end;
 }
@@ -1372,6 +1372,12 @@ button {
   display: grid;
   gap: 0.45rem;
   justify-items: center;
+}
+
+.event-cell__actions {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
 }
 
 .event-card__support-line {

@@ -13,6 +13,7 @@ interface RunView2Props {
   onSelectScenario: (scenarioId: string) => void;
   onOpenScenarioSettings: (scenarioId: string) => void;
   onCreateScenario: () => void;
+  onCloneScenario: (scenarioId: string) => void;
   onDeleteScenario: (scenarioId: string) => Promise<void>;
   onUploadAudio: (file: File) => Promise<void>;
 }
@@ -25,6 +26,7 @@ export function RunView2({
   onSelectScenario,
   onOpenScenarioSettings,
   onCreateScenario,
+  onCloneScenario,
   onDeleteScenario,
   onUploadAudio,
 }: RunView2Props) {
@@ -310,6 +312,16 @@ export function RunView2({
                           <span>{nextTimelineEvent ? formatEventTime(nextTimelineEvent.scheduledAtUtc, candidate.timezone) : 'No events'}</span>
                         </div>
                         <div className="run-scenario-card__controls">
+                          <button
+                            type="button"
+                            className="ghost-button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onCloneScenario(candidate.id);
+                            }}
+                          >
+                            Clone
+                          </button>
                           <button
                             type="button"
                             className="ghost-button"

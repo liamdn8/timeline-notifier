@@ -36,6 +36,37 @@ export const BUILTIN_AUDIO_OPTIONS: BuiltinAudioDefinition[] = [
 ];
 
 let audioContextPromise: Promise<AudioContext> | null = null;
+let stopActivePlayback = () => {};
+let activePlaybackToken = 0;
+
+const clearActivePlayback = (token: number) => {
+  if (activePlaybackToken !== token) {
+    return;
+  }
+
+  stopActivePlayback = () => {};
+};
+
+const setActivePlayback = (stop: () => void) => {
+  const token = activePlaybackToken + 1;
+  activePlaybackToken = token;
+
+  let stopped = false;
+  stopActivePlayback = () => {
+    if (stopped) {
+      return;
+    }
+
+    stopped = true;
+    stop();
+    clearActivePlayback(token);
+  };
+
+  return {
+    token,
+    stop: stopActivePlayback,
+  };
+};
 
 const getAudioContext = async () => {
   if (!audioContextPromise) {
@@ -57,7 +88,11 @@ const playBuiltin = async (key: BuiltinAudioKey) => {
     return;
   }
 
+  stopAudioPlayback();
+
   let cursor = context.currentTime;
+  const oscillators: OscillatorNode[] = [];
+  const gainNodes: GainNode[] = [];
   for (const note of definition.sequence) {
     const oscillator = context.createOscillator();
     const gainNode = context.createGain();
@@ -71,16 +106,51 @@ const playBuiltin = async (key: BuiltinAudioKey) => {
     oscillator.connect(gainNode).connect(context.destination);
     oscillator.start(cursor);
     oscillator.stop(cursor + note.duration + 0.02);
+    oscillators.push(oscillator);
+    gainNodes.push(gainNode);
     cursor += note.duration + 0.03;
   }
+
+  const playback = setActivePlayback(() => {
+    for (const oscillator of oscillators) {
+      try {
+        oscillator.stop();
+      } catch {
+        // Ignore nodes that already completed.
+      }
+      oscillator.disconnect();
+    }
+
+    for (const gainNode of gainNodes) {
+      gainNode.disconnect();
+    }
+  });
+
+  const durationMs = Math.max(0, Math.ceil((cursor - context.currentTime + 0.05) * 1000));
+  window.setTimeout(() => {
+    clearActivePlayback(playback.token);
+  }, durationMs);
 };
 
 const playUploaded = async (asset: AudioAsset) => {
   await getAudioContext();
 
+  stopAudioPlayback();
+
   if (asset.url) {
     const audio = new Audio(asset.url);
     audio.volume = 0.95;
+    const playback = setActivePlayback(() => {
+      audio.pause();
+      audio.currentTime = 0;
+    });
+    audio.addEventListener(
+      'ended',
+      () => {
+        clearActivePlayback(playback.token);
+      },
+      { once: true },
+    );
     await audio.play();
     return;
   }
@@ -94,6 +164,19 @@ const playUploaded = async (asset: AudioAsset) => {
   try {
     const audio = new Audio(objectUrl);
     audio.volume = 0.95;
+    const playback = setActivePlayback(() => {
+      audio.pause();
+      audio.currentTime = 0;
+      URL.revokeObjectURL(objectUrl);
+    });
+    audio.addEventListener(
+      'ended',
+      () => {
+        clearActivePlayback(playback.token);
+        URL.revokeObjectURL(objectUrl);
+      },
+      { once: true },
+    );
     await audio.play();
   } finally {
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
@@ -102,6 +185,10 @@ const playUploaded = async (asset: AudioAsset) => {
 
 export const primeAudioPlayback = async () => {
   await getAudioContext();
+};
+
+export const stopAudioPlayback = () => {
+  stopActivePlayback();
 };
 
 export const playAudioSource = async (

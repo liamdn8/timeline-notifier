@@ -1,4 +1,4 @@
-import { BUILTIN_AUDIO_OPTIONS, playAudioSource, primeAudioPlayback } from '../lib/audio';
+import { BUILTIN_AUDIO_OPTIONS, playAudioSource, primeAudioPlayback, stopAudioPlayback } from '../lib/audio';
 import type { AudioAsset } from '../types';
 
 interface AudioLibraryViewProps {
@@ -99,6 +99,13 @@ export function AudioLibraryView({ audioAssets, onUploadAudio }: AudioLibraryVie
                     }
                   >
                     Preview
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={stopAudioPlayback}
+                  >
+                    Stop
                   </button>
                 </div>
               </article>
